@@ -9,8 +9,7 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import numpy as np
 from plot_data import plot_data
 import json
-from PID_Controllers import update_depth_pid
-from PID_Controllers import update_heading_pid
+from PID_Controller import PIDController
 import update_thrusters
 
 # Initialize ROS node
@@ -31,9 +30,13 @@ aftVertThrusterPub = rospy.Publisher('/aft_vert_thruster', Float64, queue_size=1
 # Global variables
 current_depth = None
 current_heading = None
-ros_rate = 6  # Hz
+desired_rate = 6  # Hz
 kp_depth, ki_depth, kd_depth = 300.0, 10, 5
 kp_heading, ki_heading, kd_heading = 20.0, 1, 2
+
+# Initialize PID Controllers
+depth_PID = PIDController(kp_depth, ki_depth, kd_depth)
+heading_PID = PIDController(kp_heading, ki_heading, kd_heading)
 
 # build callback function
 def fusion_state_callback(msg):
@@ -50,8 +53,8 @@ fusion_state_sub = rospy.Subscriber('/fusion/pose_gt', PoseStamped, fusion_state
 # PID control setup
 desired_depth = -10.0
 desired_heading = 90
-rate = rospy.Rate(ros_rate)  # 6 Hz
-
+rate = rospy.Rate(desired_rate)  # 6 Hz
+dt = 1/ desired_rate
 # Data for plotting
 plot_time = []
 actual_depth_data = []
@@ -67,8 +70,8 @@ elapsed_time = 0
 try:
     while not rospy.is_shutdown() and elapsed_time < 430:
         if 'current_depth' in globals() and 'current_heading' in globals():
-            depth_control_signal, depth_error = update_depth_pid(current_depth, desired_depth, )
-            heading_control_signal, heading_error = update_heading_pid(current_heading, desired_heading)
+            depth_control_signal, depth_error = depth_PID.update(current_depth, desired_depth, dt)
+            heading_control_signal, heading_error = heading_PID.update(current_heading, desired_heading, dt)
 
             # Update thrusters
             thruster_msgs = update_thrusters(depth_control_signal, heading_control_signal)
@@ -92,15 +95,20 @@ try:
 
             rate.sleep()
             elapsed_time = rospy.get_time() - start_time
+except rospy.ROSInterruptException: # handles ROS shutdown requests Ctrl+C or rosnode kill etc.
+    rospy.loginfo("ROS shutdown request received.")
+except Exception as e: # handles and displays unexpected errors that aren't keyboard interrupts or system exits
+    rospy.logerr("Unhandled exception: {}".format(e))
 finally:
     # Save and plot final data
+    rospy.loginfo("Shutting down, saving data...")
     # Plotting function call
     plot_data(plot_time, actual_depth_data, [desired_depth] * len(plot_time), actual_heading_data,
               [desired_heading] * len(plot_time), depth_error_data, heading_error_data, control_signal_data,
               heading_control_signal_data)
 
     # Create a filename with ros_rate and PID gains
-    filename = (f"results__rate{ros_rate}_"
+    filename = (f"results__rate{desired_rate}_"
                 f"KpD{kp_depth}_KiD{ki_depth}_KdD{kd_depth}_"
                 f"KpH{kp_heading}_KiH{ki_heading}_KdH{kd_heading}.json")
     # Save data to JSON for later analysis
