@@ -5,12 +5,12 @@
 import rospy
 from std_msgs.msg import Float64
 from geometry_msgs.msg import PoseStamped
-from tf.transformations import euler_from_quaternion, quaternion_from_euler
+from tf.transformations import quaternion_from_euler, euler_from_quaternion
 import numpy as np
-from plot_data import plot_data
 import json
+from plot_data import plot_data
 from PID_Controller import PIDController
-import update_thrusters
+from update_thrusters import update_thrusters
 
 # Initialize ROS node
 # Documentation on how to initialize ROS Node in Python:
@@ -38,6 +38,7 @@ kp_heading, ki_heading, kd_heading = 20.0, 1, 2
 depth_PID = PIDController(kp_depth, ki_depth, kd_depth)
 heading_PID = PIDController(kp_heading, ki_heading, kd_heading)
 
+
 # build callback function
 def fusion_state_callback(msg):
     global current_depth, current_heading
@@ -47,14 +48,16 @@ def fusion_state_callback(msg):
     current_heading = np.rad2deg(angles[2])
     current_depth = msg.pose.pose.position.z
 
+
 # subscriber function
 fusion_state_sub = rospy.Subscriber('/fusion/pose_gt', PoseStamped, fusion_state_callback)
+
 
 # PID control setup
 desired_depth = -10.0
 desired_heading = 90
 rate = rospy.Rate(desired_rate)  # 6 Hz
-dt = 1/ desired_rate
+dt = 1 / desired_rate
 # Data for plotting
 plot_time = []
 actual_depth_data = []
@@ -79,9 +82,9 @@ try:
             bowStbdThrusterPub.publish(thruster_msgs['bow_stbd'])
             vertPortThrusterPub.publish(thruster_msgs['vert_port'])
             vertStbdThrusterPub.publish(thruster_msgs['vert_stbd'])
-            #aftPortThrusterPub.publish(thruster_msgs['aft_port'])
-            #aftStbdThrusterPub.publish(thruster_msgs['aft_stbd'])
-            #aftVertThrusterPub.publish(thruster_msgs['aft_vert'])
+            # aftPortThrusterPub.publish(thruster_msgs['aft_port'])
+            # aftStbdThrusterPub.publish(thruster_msgs['aft_stbd'])
+            # aftVertThrusterPub.publish(thruster_msgs['aft_vert'])
 
             # Collect data for plotting
             current_time = rospy.get_time() - start_time
@@ -95,9 +98,9 @@ try:
 
             rate.sleep()
             elapsed_time = rospy.get_time() - start_time
-except rospy.ROSInterruptException: # handles ROS shutdown requests Ctrl+C or rosnode kill etc.
+except rospy.ROSInterruptException:  # handles ROS shutdown requests Ctrl+C or rosnode kill etc.
     rospy.loginfo("ROS shutdown request received.")
-except Exception as e: # handles and displays unexpected errors that aren't keyboard interrupts or system exits
+except Exception as e:  # handles and displays unexpected errors that aren't keyboard interrupts or system exits
     rospy.logerr("Unhandled exception: {}".format(e))
 finally:
     # Save and plot final data
@@ -108,9 +111,11 @@ finally:
               heading_control_signal_data)
 
     # Create a filename with ros_rate and PID gains
-    filename = (f"results__rate{desired_rate}_"
-                f"KpD{kp_depth}_KiD{ki_depth}_KdD{kd_depth}_"
-                f"KpH{kp_heading}_KiH{ki_heading}_KdH{kd_heading}.json")
+    filename = "results__ROSrate{}_KpD{}_KiD{}_KdD{}_KpH{}_KiH{}_KdH{}.json".format(
+        desired_rate,
+        kp_depth, ki_depth, kd_depth,
+        kp_heading, ki_heading, kd_heading
+    )
     # Save data to JSON for later analysis
     data = {
         "plot_time": plot_time,

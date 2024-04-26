@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
+
+
 def plot_data(plot_time, actual_depth_data, desired_depth_data, actual_heading_data, desired_heading_data, depth_error_data, heading_error_data, control_signal_data, heading_control_signal_data):
     # Heading Plot
     plt.figure(1, figsize=(10, 12))  # Set the figure size
@@ -70,7 +72,6 @@ def plot_data(plot_time, actual_depth_data, desired_depth_data, actual_heading_d
     plt.savefig('smoothed_heading_plot.png')
     plt.show()
 
-# This function call should be placed within the finally block after data collection completes.
 
 def smooth_heading_transitions(heading_data):
     smoothed_data = []
@@ -84,3 +85,4 @@ def smooth_heading_transitions(heading_data):
         smoothed_data.append(angle)
         previous_angle = angle
     return np.array(smoothed_data) + 360 * (np.array(smoothed_data) < 0)  # Ensure all angles are positive
+
